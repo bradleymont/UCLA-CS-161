@@ -248,34 +248,39 @@
 	 ; check the other rows of the state and decrement r
 	 (get-square (rest s) (- r 1) c))))
 
-; HELPER FUNCTION FOR set-square: set-square-in-row
-; takes in the first part of a row (row-beginning), 
-; the second part of a row (row-end), an integer c,
-; and a value v, and returns the row with the item in row
-; in column (c) equal to v
-; Note: it will be initially called with row-beginning = '()
-; ARGUMENTS: row-beginning (list), row-end (list), c (column #), v (integer) 
-; RETURN VALUE: list (the row with the item in column c equal to v)
-(defun set-square-in-row (row-beginning row-end c v)
-  (cond ((null row-end) ; if row-end is an empty list
-	 row-beginning) ; return the row unchanged - this means c was invalid
-	((equal c 0) ; if c == 0
-	 ; replace the first element (column 0) in row-end with v
-	 (append row-beginning (cons v (rest row-end))))
-	(t ; otherwise (c > 0)
-	 ; move the beginning of row-end to the end of row-beginning, decrement c
-	 (let ((new-row-beginning (append row-beginning (list (first row-end))))
-	       (new-row-end (rest row-end)))
-	   (set-square-in-row new-row-beginning new-row-end (- c 1) v)))))
-
+; HELPER FUNCTION FOR set-square: set-square-in-row 
+; returns the row (row) with the item in column (col) set to v 
+; returns the row unchanged if col is invalid
+; ARGUMENTS: row (list), col (integer), v (integer)
+; RETURN VALUE: list (row with the item in column col = v)
+(defun set-square-in-row (row col v)
+  (cond ((null row) ; if the row is empty
+	 NIL) ; return an empty row
+	((equal col 0) ; if col == 0
+	 ; replace the first element of row with v
+	 (cons v (rest row)))
+	(t ; otherwise (col != 0)
+	 ; append the first element of row to the rest of the row with the replacement
+	 (cons (first row) (set-square-in-row (rest row) (- col 1) v)))))
+	 
 ; HELPER FUNCTION FOR next-states: set-square
 ; takes in a state s, and returns a new state s' that is
 ; obtained by setting the square (r,c) to value v
 ; Note: does not modify input state
 ; ARGUMENTS: s (state), r (row #), c (column #), v (integer)
 ; RETURN VALUE: state (updated state with square (r,c) = v)
-
-
+(defun set-square (s r c v)
+  (cond ((null s) ; if the state is NIL
+	 NIL) ; return empty state
+	((equal r 0) ; if row == 0
+	 ; replace the item in column c in the first row with v
+	 (let ((updated-first-row (set-square-in-row (first s) c v)))
+	   ; append the updated first row to the rest of the state
+	   (cons updated-first-row (rest s))))
+	(t ; otherwise (row != 0)
+	 ; check the other rows of s for the (r,c) to be replaced
+	 (cons (first s) (set-square (rest s) (- r 1) c v)))))
+	 
 ; EXERCISE: Modify this function to return the list of 
 ; sucessor states of s.
 ;
