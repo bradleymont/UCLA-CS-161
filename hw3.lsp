@@ -236,17 +236,19 @@
 ; HELPER FUNCTION FOR next-states: get-square
 ; returns the integer content of state s at square (r,c)
 ; if the square is outside of the state, returns the value of a wall
-; ARGUMENTS: s (state), r (row #), c (column #)
+; ARGUMENTS: s (state), pos (r,c)
 ; RETURN VALUE: integer (the content of state s at square (r,c))
-(defun get-square (s r c)
-  (cond ((null s) ; if the state is NIL
-	 wall) ; return wall since any square is outside of an empty state
-	((equal r 0) ; if row == 0
-	 ; then return the element in the first row that is in column c
-	 (get-square-in-row (first s) c))
-	(t ; otherwise (row != 0)
-	 ; check the other rows of the state and decrement r
-	 (get-square (rest s) (- r 1) c))))
+(defun get-square (s pos)
+  (let ((r (first pos)) ; get the row of the position
+	(c (second pos))) ; get the column of the position
+    (cond ((null s) ; if the state is NIL
+	   wall) ; return wall since any square is outside of an empty state
+	  ((equal r 0) ; if row == 0
+	   ; then return the element in the first row that is in column c
+	   (get-square-in-row (first s) c))
+	  (t ; otherwise (row != 0)
+	   ; check the other rows of the state and decrement r
+	   (get-square (rest s) (list (- r 1) c))))))
 
 ; HELPER FUNCTION FOR set-square: set-square-in-row 
 ; returns the row (row) with the item in column (col) set to v 
@@ -267,20 +269,75 @@
 ; takes in a state s, and returns a new state s' that is
 ; obtained by setting the square (r,c) to value v
 ; Note: does not modify input state
-; ARGUMENTS: s (state), r (row #), c (column #), v (integer)
+; ARGUMENTS: s (state), pos (r,c), v (integer)
 ; RETURN VALUE: state (updated state with square (r,c) = v)
-(defun set-square (s r c v)
-  (cond ((null s) ; if the state is NIL
-	 NIL) ; return empty state
-	((equal r 0) ; if row == 0
-	 ; replace the item in column c in the first row with v
-	 (let ((updated-first-row (set-square-in-row (first s) c v)))
-	   ; append the updated first row to the rest of the state
-	   (cons updated-first-row (rest s))))
-	(t ; otherwise (row != 0)
-	 ; check the other rows of s for the (r,c) to be replaced
-	 (cons (first s) (set-square (rest s) (- r 1) c v)))))
-	 
+(defun set-square (s pos v)
+  (let ((r (first pos)) ; get the row of the position
+	(c (second pos))) ; get the column of the position
+    (cond ((null s) ; if the state is NIL
+	   NIL) ; return empty state
+	  ((equal r 0) ; if row == 0
+	   ; replace the item in column c in the first row with v
+	   (let ((updated-first-row (set-square-in-row (first s) c v)))
+	     ; append the updated first row to the rest of the state
+	     (cons updated-first-row (rest s))))
+	  (t ; otherwise (row != 0)
+	   ; check the other rows of s for the (r,c) to be replaced
+	   (cons (first s) (set-square (rest s) (list (- r 1) c) v))))))
+
+
+
+; HELPER FUNCTION FOR try-move: move-into-blank-space
+; takes in state s, keeper coordinates, and blank space coordinates
+; and returns the state s with the keeper where the blank space was
+; ARGUMENTS: s (state), keeper-pos (r,c), blank-pos (r,c)
+; RETURN VALUE: state (with keeper in blank-pos)
+(defun move-into-blank-space (s keeper-pos blank-pos)
+  ; put the keeper where the blank-pos was
+  (let ((moved-keeper (set-square s blank-pos keeper)))
+    ; then put a blank in the keeper's old spot
+    (set-square moved-keeper keeper-pos blank)))
+
+; HELPER FUNCTION FOR next-states: get-new-pos
+; takes a position pos and a direction dir
+; and returns the adjacent position to pos in direction dir
+; Note: we make no checks if the position is valid in this function
+; ARGUMENTS: pos (r,c), dir ('up, 'down, 'left, or 'right)
+; RETURN VALUE: position (position next to pos in direction dir)
+(defun get-new-pos (pos dir)
+  (cond ((equal dir 'up) ; moving up
+	 (list (- (first pos) 1) (second pos))) ; return (r - 1, c)
+	((equal dir 'down) ; moving down
+	 (list (+ (first pos) 1) (second pos))) ; return (r + 1, c)
+	((equal dir 'left) ; moving left
+	 (list (first pos) (- (second pos) 1))) ; return (r, c - 1)
+	((equal dir 'right) ; moving right
+	 (list (first pos) (+ (second pos) 1))))) ; return (r, c + 1)
+
+; HELPER FUNCTION FOR next-states: try-move
+; takes in a state s and a move direction dir, and returns the state
+; that is the result of moving the keeper in state s in direction dir
+; Note: returns NIL if the move is invalid (ex: wall in that direction)
+; Note: dir = {'up, 'down, 'left, 'right}
+; ARGUMENTS: s (state), dir ('up, 'down, 'left, or 'right)
+; RETURN VALUE: state (result of moving keeper in state s in diretion dir)
+(defun try-move (s dir)
+  (let* ((keeper-pos (getKeeperPosition s 0)) ; get position of keeper - (r,c)
+	 (new-pos (get-new-pos keeper-pos dir)) ; get the position we're trying to move to
+	 (new-pos-content (get-square s new-pos))) ; get the content at the new position
+    (cond ((isBlank new-pos-content) ; if the new position is BLANK
+	   'blank)
+	  ; NOTE: if the new spot is out of bounds, new-pos will be a wall
+	  ((isWall new-pos-content) ; if the new position is a WALL
+	   'wall)
+	  ((isBox new-pos-content) ; if the new position is a BOX
+	   'box)
+	  (t 'other))))
+    
+    
+    
+
+
 ; EXERCISE: Modify this function to return the list of 
 ; sucessor states of s.
 ;
