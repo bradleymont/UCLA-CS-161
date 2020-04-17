@@ -217,6 +217,65 @@
 
 ; ------------------------------ ENDING GOAL-TEST -------------------------------
 
+; ------------------------------ STARTING NEXT-STATES -------------------------------
+
+; HELPER FUNCTION FOR get-square: get-square-in-row
+; returns the integer content in row (row) at column (col)
+; returns the value of a wall if the row is empty
+; ARGUMENTS: row (list), col (integer)
+; RETURN VALUE: the content in (row) at column (col)
+(defun get-square-in-row (row col)
+  (cond ((null row) ; if the row is empty
+	 wall) ; return wall if the row is empty
+	((equal col 0) ; if col == 0
+	 (first row)) ; then return the first element in row (which is in column 0)
+	(t ; col != 0
+	 ; decrement col and search the rest of row
+	 (get-square-in-row (rest row) (- col 1)))))
+	 
+; HELPER FUNCTION FOR next-states: get-square
+; returns the integer content of state s at square (r,c)
+; if the square is outside of the state, returns the value of a wall
+; ARGUMENTS: s (state), r (row #), c (column #)
+; RETURN VALUE: integer (the content of state s at square (r,c))
+(defun get-square (s r c)
+  (cond ((null s) ; if the state is NIL
+	 wall) ; return wall since any square is outside of an empty state
+	((equal r 0) ; if row == 0
+	 ; then return the element in the first row that is in column c
+	 (get-square-in-row (first s) c))
+	(t ; otherwise (row != 0)
+	 ; check the other rows of the state and decrement r
+	 (get-square (rest s) (- r 1) c))))
+
+; HELPER FUNCTION FOR set-square: set-square-in-row
+; takes in the first part of a row (row-beginning), 
+; the second part of a row (row-end), an integer c,
+; and a value v, and returns the row with the item in row
+; in column (c) equal to v
+; Note: it will be initially called with row-beginning = '()
+; ARGUMENTS: row-beginning (list), row-end (list), c (column #), v (integer) 
+; RETURN VALUE: list (the row with the item in column c equal to v)
+(defun set-square-in-row (row-beginning row-end c v)
+  (cond ((null row-end) ; if row-end is an empty list
+	 row-beginning) ; return the row unchanged - this means c was invalid
+	((equal c 0) ; if c == 0
+	 ; replace the first element (column 0) in row-end with v
+	 (append row-beginning (cons v (rest row-end))))
+	(t ; otherwise (c > 0)
+	 ; move the beginning of row-end to the end of row-beginning, decrement c
+	 (let ((new-row-beginning (append row-beginning (list (first row-end))))
+	       (new-row-end (rest row-end)))
+	   (set-square-in-row new-row-beginning new-row-end (- c 1) v)))))
+
+; HELPER FUNCTION FOR next-states: set-square
+; takes in a state s, and returns a new state s' that is
+; obtained by setting the square (r,c) to value v
+; Note: does not modify input state
+; ARGUMENTS: s (state), r (row #), c (column #), v (integer)
+; RETURN VALUE: state (updated state with square (r,c) = v)
+
+
 ; EXERCISE: Modify this function to return the list of 
 ; sucessor states of s.
 ;
@@ -246,6 +305,8 @@
     (cleanUpList result);end
    );end let
   );
+
+; ------------------------------ ENDING NEXT-STATES -------------------------------
 
 ; EXERCISE: Modify this function to compute the trivial 
 ; admissible heuristic.
