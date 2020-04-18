@@ -326,8 +326,24 @@
 	  (t ; otherwise (the spot the box would occupy isn't a BLANK or GOAL)
 	   NIL)))) ; the box can't be pushed into anything besides a blank or goal
 
+; HELPER FUNCTION FOR try-move: move-keeper-to-goal
+; takes in state s, keeper coordinates, and goal space coordinates
+; and returns the state s with the keeper where the goal space was
+; ARGUMENTS: s (state), keeper-pos (r,c), goal-pos (r,c)
+; RETURN VALUE: state (with keeper in goal-pos)
+;(move-keeper-to-goal s keeper-pos goal-pos)) ; move the keeper to the goal
+(defun move-keeper-to-goal (s keeper-pos goal-pos)
+  ; first, put the keeper in goal-pos (turn it into keeper + goal)
+  (let ((moved-keeper (set-square s goal-pos keeperstar)))
+    ; then, move the keeper off of its old spot
+    (cond ((isKeeper (get-square s keeper-pos)) ; if the keeper was NOT on a goal
+	   ; then replace its old spot with a BLANK
+	   (set-square moved-keeper keeper-pos blank))
+	  (t ; otherwise - the keeper is ontop of a goal
+	   ; then replace its old spot with a GOAL
+	   (set-square moved-keeper keeper-pos star)))))
+    
 
-	     
 ; HELPER FUNCTION FOR next-states: get-new-pos
 ; takes a position pos and a direction dir
 ; and returns the adjacent position to pos in direction dir
@@ -363,7 +379,9 @@
 	  ((isBox new-pos-content) ; if the new position is a BOX
 	   ; try to move the keeper to where the box is
 	   (move-keeper-to-box s keeper-pos new-pos dir))
-	  (t 'other))))
+	  ((isStar new-pos-content) ; if the new position is a GOAL
+	   (move-keeper-to-goal s keeper-pos new-pos)) ; move the keeper to the goal
+	  (t NIL))))
     
     
     
