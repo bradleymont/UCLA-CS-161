@@ -285,64 +285,46 @@
 	   ; check the other rows of s for the (r,c) to be replaced
 	   (cons (first s) (set-square (rest s) (list (- r 1) c) v))))))
 
-
-
-; HELPER FUNCTION FOR try-move: move-keeper-to-blank
-; takes in state s, keeper coordinates, and blank space coordinates
-; and returns the state s with the keeper where the blank space was
-; ARGUMENTS: s (state), keeper-pos (r,c), blank-pos (r,c)
-; RETURN VALUE: state (with keeper in blank-pos)
-(defun move-keeper-to-blank (s keeper-pos blank-pos)
-  ; first, set the blank spot to now contain the keeper
-  (let ((moved-keeper (set-square s blank-pos keeper)))
-    ; then, move the keeper off of its old spot
+; HELPER FUNCTION FOR try-move: move-keeper-to-blank-or-goal
+; takes in state s, keeper coordinates, new space coordinates, and new space content
+; and returns the state s with the keeper where the new space is
+; Note: the new space will either be a BLANK or a GOAL
+; Note: new-pos-type is what the new space will look like after the keeper goes there (keeper or keeperstar)
+; ARGUMENTS: s (state), keeper-pos (r,c), new-pos (r,c), new-pos-type (blank or star)
+; RETURN VALUE: state (with keeper in new-pos)
+(defun move-keeper-to-blank-or-goal (s keeper-pos new-pos new-pos-type)
+  ; first move the keeper to new-pos (putting either keeper or keeperstar in new-pos
+  (let ((moved-keeper (set-square s new-pos new-pos-type)))
+    ; then move the keeper off of its old spot
     (cond ((isKeeper (get-square s keeper-pos)) ; if the keeper was NOT on a goal
 	   ; then replace its old spot with a BLANK
 	   (set-square moved-keeper keeper-pos blank))
-	  (t ; otherwise - the keeper is ontop of a goal
+	  (t ; otherwise - the keeper was ontop of a goal
 	   ; then replace its old spot with a GOAL
 	   (set-square moved-keeper keeper-pos star)))))
 
 ; HELPER FUNCTION FOR try-move: move-keeper-to-box
-; takes in state s, keeper coordinates, blank space coordinates, and a direction, 
+; takes in state s, keeper coordinates, box coordinates, and a direction, 
 ; and returns the state after trying to move the keeper to where the box was
 ; ARGUMENTS: s (state), keeper-pos (r,c), box-pos (r,c), dir ('up, 'down, 'left, or 'right)
 ; RETURN VALUE: state (after trying to move to where box is)
 (defun move-keeper-to-box (s keeper-pos box-pos dir)
-  ; get the position the box would occupy after being pushed by the keeper
-  (let* ((new-box-pos (get-new-pos box-pos dir))
+  (let* ((box-pos-type (get-square s box-pos)) ; get the content at box-pos (either box or boxstar)
+	 (new-box-pos (get-new-pos box-pos dir)) ; get the pos the box would occupy after being pushed
 	 (new-box-pos-type (get-square s new-box-pos))) ; then get the content at that spot
     (cond ((or (isBlank new-box-pos-type) (isStar new-box-pos-type))
 	   ; if the spot the box would occupy is BLANK or is a GOAL
 	   ; then we can push the box into that open spot (either blank or goal)
-	   (let* ((moved-keeper (set-square s keeper-pos blank)) ; put blank where keeper was
-		  (moved-box (set-square moved-keeper box-pos keeper))) ; put keeper where box was
+	   (let* ((box-pos-new-type (if (isBox box-pos-type) keeper keeperstar))  
+		  (moved-keeper (move-keeper-to-blank-or-goal s keeper-pos box-pos box-pos-new-type)))
 	     (cond ((isBlank new-box-pos-type) ; if the box is going into a BLANK spot
 		    ; put the box in the blank spot
-		    (set-square moved-box new-box-pos box))
+		    (set-square moved-keeper new-box-pos box))
 		   (t ; if the box is going into a GOAL spot
 		    ; put (box + goal) into that spot
-		    (set-square moved-box new-box-pos boxstar)))))
+		    (set-square moved-keeper new-box-pos boxstar)))))
 	  (t ; otherwise (the spot the box would occupy isn't a BLANK or GOAL)
 	   NIL)))) ; the box can't be pushed into anything besides a blank or goal
-
-; HELPER FUNCTION FOR try-move: move-keeper-to-goal
-; takes in state s, keeper coordinates, and goal space coordinates
-; and returns the state s with the keeper where the goal space was
-; ARGUMENTS: s (state), keeper-pos (r,c), goal-pos (r,c)
-; RETURN VALUE: state (with keeper in goal-pos)
-;(move-keeper-to-goal s keeper-pos goal-pos)) ; move the keeper to the goal
-(defun move-keeper-to-goal (s keeper-pos goal-pos)
-  ; first, put the keeper in goal-pos (turn it into keeper + goal)
-  (let ((moved-keeper (set-square s goal-pos keeperstar)))
-    ; then, move the keeper off of its old spot
-    (cond ((isKeeper (get-square s keeper-pos)) ; if the keeper was NOT on a goal
-	   ; then replace its old spot with a BLANK
-	   (set-square moved-keeper keeper-pos blank))
-	  (t ; otherwise - the keeper is ontop of a goal
-	   ; then replace its old spot with a GOAL
-	   (set-square moved-keeper keeper-pos star)))))
-    
 
 ; HELPER FUNCTION FOR next-states: get-new-pos
 ; takes a position pos and a direction dir
@@ -372,20 +354,15 @@
 	 (new-pos (get-new-pos keeper-pos dir)) ; get the position we're trying to move to
 	 (new-pos-content (get-square s new-pos))) ; get the content at the new position
     (cond ((isBlank new-pos-content) ; if the new position is BLANK
-	   (move-keeper-to-blank s keeper-pos new-pos)) ; move the keeper to the blank spot
-	  ; NOTE: if the new spot is out of bounds, new-pos will be a wall
-	  ((isWall new-pos-content) ; if the new position is a WALL
-	   NIL) ; return NIL - move is INVALID (either into a wall or out of bounds)
-	  ((isBox new-pos-content) ; if the new position is a BOX
+	   (move-keeper-to-blank-or-goal s keeper-pos new-pos keeper)) ; move the keeper to the blank spot
+	  ; if the new position is a BOX or BOX on top of a GOAL
+	  ((or (isBox new-pos-content) (isBoxStar new-pos-content))
 	   ; try to move the keeper to where the box is
 	   (move-keeper-to-box s keeper-pos new-pos dir))
 	  ((isStar new-pos-content) ; if the new position is a GOAL
-	   (move-keeper-to-goal s keeper-pos new-pos)) ; move the keeper to the goal
-	  (t NIL))))
-    
-    
-    
-
+	   (move-keeper-to-blank-or-goal s keeper-pos new-pos keeperstar)) ; move the keeper to the goal
+	  (t ; otherwise
+	   NIL)))) ; move is invalid - can only move to blank, box, or goal
 
 ; EXERCISE: Modify this function to return the list of 
 ; sucessor states of s.
