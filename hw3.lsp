@@ -384,15 +384,9 @@
 ; 
 ;
 (defun next-states (s)
-  (let* ((pos (getKeeperPosition s 0))
-	 (x (car pos))
-	 (y (cadr pos))
-	 ;x and y are now the coordinate of the keeper in s.
-	 (result nil)
-	 )
-    (cleanUpList result);end
-   );end let
-  );
+  ; try moving in all 4 directions
+  (let ((result (list (try-move s 'up) (try-move s 'right) (try-move s 'down) (try-move s 'left))))
+    (cleanUpList result))) ; then remove any NILs from the result
 
 ; ------------------------------ ENDING NEXT-STATES -------------------------------
 
