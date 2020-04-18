@@ -287,16 +287,21 @@
 
 
 
-; HELPER FUNCTION FOR try-move: move-into-blank-space
+; HELPER FUNCTION FOR try-move: move-keeper-to-blank
 ; takes in state s, keeper coordinates, and blank space coordinates
 ; and returns the state s with the keeper where the blank space was
 ; ARGUMENTS: s (state), keeper-pos (r,c), blank-pos (r,c)
 ; RETURN VALUE: state (with keeper in blank-pos)
-(defun move-into-blank-space (s keeper-pos blank-pos)
-  ; put the keeper where the blank-pos was
+(defun move-keeper-to-blank (s keeper-pos blank-pos)
+  ; first, set the blank spot to now contain the keeper
   (let ((moved-keeper (set-square s blank-pos keeper)))
-    ; then put a blank in the keeper's old spot
-    (set-square moved-keeper keeper-pos blank)))
+    ; then, move the keeper off of its old spot
+    (cond ((isKeeper (get-square s keeper-pos)) ; if the keeper was NOT on a goal
+	   ; then replace its old spot with a BLANK
+	   (set-square moved-keeper keeper-pos blank))
+	  (t ; otherwise - the keeper is ontop of a goal
+	   ; then replace its old spot with a GOAL
+	   (set-square moved-keeper keeper-pos star)))))
 
 ; HELPER FUNCTION FOR next-states: get-new-pos
 ; takes a position pos and a direction dir
@@ -326,7 +331,7 @@
 	 (new-pos (get-new-pos keeper-pos dir)) ; get the position we're trying to move to
 	 (new-pos-content (get-square s new-pos))) ; get the content at the new position
     (cond ((isBlank new-pos-content) ; if the new position is BLANK
-	   'blank)
+	   (move-keeper-to-blank s keeper-pos new-pos)) ; move the keeper to the blank spot
 	  ; NOTE: if the new spot is out of bounds, new-pos will be a wall
 	  ((isWall new-pos-content) ; if the new position is a WALL
 	   'wall)
