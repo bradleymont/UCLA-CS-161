@@ -303,6 +303,31 @@
 	   ; then replace its old spot with a GOAL
 	   (set-square moved-keeper keeper-pos star)))))
 
+; HELPER FUNCTION FOR try-move: move-keeper-to-box
+; takes in state s, keeper coordinates, blank space coordinates, and a direction, 
+; and returns the state after trying to move the keeper to where the box was
+; ARGUMENTS: s (state), keeper-pos (r,c), box-pos (r,c), dir ('up, 'down, 'left, or 'right)
+; RETURN VALUE: state (after trying to move to where box is)
+(defun move-keeper-to-box (s keeper-pos box-pos dir)
+  ; get the position the box would occupy after being pushed by the keeper
+  (let* ((new-box-pos (get-new-pos box-pos dir))
+	 (new-box-pos-type (get-square s new-box-pos))) ; then get the content at that spot
+    (cond ((or (isBlank new-box-pos-type) (isStar new-box-pos-type))
+	   ; if the spot the box would occupy is BLANK or is a GOAL
+	   ; then we can push the box into that open spot (either blank or goal)
+	   (let* ((moved-keeper (set-square s keeper-pos blank)) ; put blank where keeper was
+		  (moved-box (set-square moved-keeper box-pos keeper))) ; put keeper where box was
+	     (cond ((isBlank new-box-pos-type) ; if the box is going into a BLANK spot
+		    ; put the box in the blank spot
+		    (set-square moved-box new-box-pos box))
+		   (t ; if the box is going into a GOAL spot
+		    ; put (box + goal) into that spot
+		    (set-square moved-box new-box-pos boxstar)))))
+	  (t ; otherwise (the spot the box would occupy isn't a BLANK or GOAL)
+	   NIL)))) ; the box can't be pushed into anything besides a blank or goal
+
+
+	     
 ; HELPER FUNCTION FOR next-states: get-new-pos
 ; takes a position pos and a direction dir
 ; and returns the adjacent position to pos in direction dir
@@ -334,9 +359,10 @@
 	   (move-keeper-to-blank s keeper-pos new-pos)) ; move the keeper to the blank spot
 	  ; NOTE: if the new spot is out of bounds, new-pos will be a wall
 	  ((isWall new-pos-content) ; if the new position is a WALL
-	   'wall)
+	   NIL) ; return NIL - move is INVALID (either into a wall or out of bounds)
 	  ((isBox new-pos-content) ; if the new position is a BOX
-	   'box)
+	   ; try to move the keeper to where the box is
+	   (move-keeper-to-box s keeper-pos new-pos dir))
 	  (t 'other))))
     
     
