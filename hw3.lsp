@@ -479,7 +479,32 @@
 	   ; return min(first-dist, all the other distances)
 	   (min first-dist (min-box-to-goal-dist box-pos (rest goal-coords)))))))
 
-	 
+; HELPER FUNCTION FOR h804993030: sum-manhattan-dist
+; returns the sum of the minimum manhattan distance between each box and any goal
+; ARGUMENTS: box-coords (list of (r,c)), goal-coords (list of (r,c))
+; RETURN VALUE: integer (sum of min manhattan distances)
+(defun sum-manhattan-dists (box-coords goal-coords)
+  (cond ((null box-coords) ; if there's no boxes
+	 0) ; then their sum is 0
+	(t ; otherwise (there are boxes)
+	 ; add the distance for the first box to the distances for the rest of the boxes
+	 (+ (min-box-to-goal-dist (first box-coords) goal-coords) (sum-manhattan-dists (rest box-coords) goal-coords)))))
+
+; HELPER FUNCTION FOR h804993030: min-keeper-to-box-dist
+; returns the minimum manhattan distance between the keeper and any box
+; ARGUMENTS: keeper-pos (r,c), box-coords (list of (r,c))
+; RETURN VALUE: the minimum manhattan distance between the keeper and any box
+(defun min-keeper-to-box-dist (keeper-pos box-coords)
+  (cond ((null box-coords) ; if there's no misplaced boxes
+	 0) ; return 0 as distance
+	((equal (length box-coords) 1) ; if there's only 1 box
+	 (manhattan-distance keeper-pos (first box-coords))) ; return the man-dist between the keeper and the box
+	(t ; otherwise (multiple coordinates)
+	 (let ((first-dist (manhattan-distance keeper-pos (first box-coords))))
+	   ; return min(first-dist, all the other distances)
+	   (min first-dist (min-keeper-to-box-dist keeper-pos (rest box-coords)))))))
+  
+
 ; EXERCISE: Change the name of this function to h<UID> where
 ; <UID> is your actual student ID number. Then, modify this 
 ; function to compute an admissible heuristic value of s. 
@@ -492,7 +517,16 @@
 
 ; current idea: sum of the manhattan distances from each box to its closest goal
 (defun h804993030 (s)
-  
+  (let ((keeper-pos (getKeeperPosition s 0)) ; get the coords of the keeper
+	(box-coords (get-type-coords s box 0)) ; get the coords of all misplaced boxes
+	(goal-coords (get-type-coords s star 0))) ; get the coords of all goals
+    (let ((box-goal-distances (sum-manhattan-dists box-coords goal-coords))
+	  (keeper-box-distance (min-keeper-to-box-dist keeper-pos box-coords)))
+      ; return the sum of the manhattan distances from each box to its closest goal
+      ; PLUS the manhattan distance between the keeper and its closest box
+      (+ box-goal-distances keeper-box-distance))))
+
+	
 
 ; ------------------------------ ENDING HEURISTICS -------------------------------
 
