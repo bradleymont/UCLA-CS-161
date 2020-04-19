@@ -390,17 +390,43 @@
 
 ; ------------------------------ ENDING NEXT-STATES -------------------------------
 
+; ------------------------------ BEGINNING HEURISTICS -------------------------------
+
 ; EXERCISE: Modify this function to compute the trivial 
 ; admissible heuristic.
 ;
 (defun h0 (s)
-  )
+  0) ; always returns the constant 0
+
+; HELPER FUNCTION for h1: num-boxes-in-row
+; returns the number of boxes (not on top of a goal) in a row 
+; ARGUMENTS: row (list)
+; RETURN VALUE: integer (# of boxes not on top of a goal in row)
+(defun num-boxes-in-row (row)
+  (cond ((null row) ; if the row is empty
+	 0) ; then it has 0 boxes
+	(t ; otherwise (the row is not empty)
+	 (cond ((equal (first row) box) ; if the first item in the row is a box
+		(+ 1 (num-boxes-in-row (rest row)))) ; return 1 + # boxes in rest of row
+	       (t ; the first item in the row isn't a box
+		(num-boxes-in-row (rest row))))))) ; return # boxes in the rest of the row
 
 ; EXERCISE: Modify this function to compute the 
 ; number of misplaced boxes in s.
 ;
+; This heuristic is admissible because it will never overestimate the # of steps
+; needs from s to the goal state. Since we can move at most 1 box per move, the 
+; amount of moves until we are at the goal state is at least the amount of boxes
+; that still need to be moved to goal states; therefore, h1 never overestimates
+; the cost and is an admissible heuristic.
 (defun h1 (s)
-  )
+  (cond ((null s) ; if the state is empty
+	 0) ; then it has 0 misplaced boxes
+	(t ; otherwise (the state is not empty)
+	 ; get the number of misplaced boxes in the first row
+	 (let ((num-boxes-in-first-row (num-boxes-in-row (first s))))
+	   ; then add that to the # of misplaced boxes in the other rows
+	   (+ num-boxes-in-first-row (h1 (rest s)))))))
 
 ; EXERCISE: Change the name of this function to h<UID> where
 ; <UID> is your actual student ID number. Then, modify this 
@@ -413,6 +439,8 @@
 ;
 (defun hUID (s)
   )
+
+; ------------------------------ ENDING HEURISTICS -------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
