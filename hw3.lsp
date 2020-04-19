@@ -428,6 +428,58 @@
 	   ; then add that to the # of misplaced boxes in the other rows
 	   (+ num-boxes-in-first-row (h1 (rest s)))))))
 
+
+
+; HELPER FUNCTION FOR h804993030: manhattan-distance
+; returns the Manhattan Distance between two coordinates
+; ARGUMENTS: pos1 (r,c), pos2 (r,c)
+; RETURN VALUE: integer (Manhattan Distance)
+(defun manhattan-distance (pos1 pos2)
+  (let* ((row-diff (- (first pos1) (first pos2)))
+	 (col-diff (- (second pos1) (second pos2))))
+    ; return abs(row-diff) + abs(col-diff)
+    (+ (abs row-diff) (abs col-diff))))
+
+; HELPER FUNCTION FOR get-type-coords: get-type-coords-in-row
+; returns the coordinates of all of the positions of content "type" in row
+; ARGUMENTS: row (list), type (content type), row-num (# row), col-num (col # of first element in row)
+; RETURN VALUE: list (coordinates of all positions with content "type")
+(defun get-type-coords-in-row (row type row-num col-num)
+  (cond ((null row) ; if the row is empty
+	 NIL) ; return an empty list - no content
+	(t ; otherwise (row isn't empty)
+	 (cond ((equal (first row) type) ; if the first item in the row is of type "type"
+		; add the coords of this position to the coords of the other "types" in the row
+		(cons (list row-num col-num) (get-type-coords-in-row (rest row) type row-num (+ col-num 1))))
+	       (t ; otherwise (the first item in the row is not a "type")
+		(get-type-coords-in-row (rest row) type row-num (+ col-num 1)))))))
+
+; HELPER FUNCTION FOR h804993030: get-type-coords
+; returns the coordinates of all of positions with content "type" in state s
+; ARGUMENTS: s (state), type (content type), top-row (row # of top row - starts as 0)
+; RETURN VALUE: list (coordinates of all positions with content "type")
+(defun get-type-coords (s type top-row)
+  (cond ((null s) ; if the state is NIL
+	 NIL) ; return an empty list - no content
+	(t ; otherwise (state is not NIL)
+	 ; get "type" coords in row 1
+	 (let ((type-coords-in-first-row (get-type-coords-in-row (first s) type top-row 0)))
+	   ; append the coords in the first row to the coords in the rest of the state
+	   (append type-coords-in-first-row (get-type-coords (rest s) type (+ top-row 1)))))))
+	 
+; HELPER FUNCTION FOR h804993030: min-box-to-goal-dist
+; returns the minimum manhattan distance between a box and any goal
+; ARGUMENTS: box-pos (r,c), goal-coords (list of (r,c))
+; RETURN VALUE: the min manhattan distance between box-pos and any item of goal-coords
+(defun min-box-to-goal-dist (box-pos goal-coords)
+  (cond ((equal (length goal-coords) 1)	; if there's only 1 goal
+	 (manhattan-distance box-pos (first goal-coords))) ; return the man-dist between the goal and box
+	(t ; otherwise (multiple coordinates)
+	 (let ((first-dist (manhattan-distance box-pos (first goal-coords))))
+	   ; return min(first-dist, all the other distances)
+	   (min first-dist (min-box-to-goal-dist box-pos (rest goal-coords)))))))
+
+	 
 ; EXERCISE: Change the name of this function to h<UID> where
 ; <UID> is your actual student ID number. Then, modify this 
 ; function to compute an admissible heuristic value of s. 
@@ -437,8 +489,10 @@
 ; The Lisp 'time' function can be used to measure the 
 ; running time of a function call.
 ;
-(defun hUID (s)
-  )
+
+; current idea: sum of the manhattan distances from each box to its closest goal
+(defun h804993030 (s)
+  
 
 ; ------------------------------ ENDING HEURISTICS -------------------------------
 
