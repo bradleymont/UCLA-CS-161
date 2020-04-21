@@ -171,68 +171,33 @@
 
 ; ------------------------------ STARTING GOAL-TEST -------------------------------
 
-; HELPER FUNCTION FOR state-contains: row-contains
-; returns true if row (row) contains type of content (content)
-; ARGUMENTS: row (list), content (integer representing content type)
-; RETURN VALUE: t if row contains content, false otherwise
-(defun row-contains (row content)
-  (cond ((null row) ; if the row is empty
-	 NIL) ; return NIL - the row cannot contain content
-	(t ; otherwise (the row is not empty)
-	 (cond ((equal (first row) content) ; if the first element in the row = content
-		t) ; return t - we found content
-	       (t ; otherwise - the first element in the row didn't match content
-		(row-contains (rest row) content)))))) ; check the rest of the row
-
-; HELPER FUNCTION FOR goal-test: state-contains
-; returns t if state (s) contains type of content (content)
-; ARGUMENTS: s (state), content (integer representing content type)
-; RETURN VALUE: t if s contains content, false otherwise
-(defun state-contains (s content)
-  (cond ((null s) ; if the state is empty
-	 NIL) ; return NIL - the state cannot contain content
-	(t ; otherwise (the state is not empty)
-	 (cond ((row-contains (first s) content) ; if the first row contains content
-		t) ; return true - we found content
-	       (t ; otherwise - we didn't find content in the first row
-		; check all of the other rows for content
-		(state-contains (rest s) content))))))
-
 ; EXERCISE: Modify this function to return true (t)
 ; if and only if s is a goal state of the game.
 ; (neither any boxes nor the keeper is on a non-goal square)
-;
-; Currently, it always returns NIL. If A* is called with
-; this function as the goal testing function, A* will never
-; terminate until the whole search space is exhausted.
-;
+
 ; We are at the goal state if and only if the keeper and all the boxes
 ; are all ontop of goals. Therefore, if we are at the goal state, we
 ; should never see the symbols @ (keeper) or $ (box). Seeing these symbols
 ; implies that either the keeper or a box is not on a goal because we
 ; would've instead seen + (keeper + goal) or * (box + goal).
+
+; ARGUMENTS: s (state)
+; RETURN VALUE: true if s is a goal state, false otherwise
 (defun goal-test (s)
-  ; return true if s doesn't contain box or keeper
-  (not (or (state-contains s box) (state-contains s keeper))))
+  (cond ((null s) ; if the state is empty
+	 t) ; return true - we consider an empty state to be a goal state
+	(t ; otherwise (the state is not empty)
+	 ; if there's a keeper ot box in the firs row
+	 (cond ((or (position keeper (first s)) (position box (first s)))
+		NIL) ; return false - found a keeper or box symbol in first row
+	       (t ; otherwise - didn't find any keeper or box in first row
+		; check all of the other rows
+		(goal-test (rest s)))))))
 
 ; ------------------------------ ENDING GOAL-TEST -------------------------------
 
 ; ------------------------------ STARTING NEXT-STATES -------------------------------
 
-; HELPER FUNCTION FOR get-square: get-square-in-row
-; returns the integer content in row (row) at column (col)
-; returns the value of a wall if the row is empty
-; ARGUMENTS: row (list), col (integer)
-; RETURN VALUE: the content in (row) at column (col)
-(defun get-square-in-row (row col)
-  (cond ((null row) ; if the row is empty
-	 wall) ; return wall if the row is empty
-	((equal col 0) ; if col == 0
-	 (first row)) ; then return the first element in row (which is in column 0)
-	(t ; col != 0
-	 ; decrement col and search the rest of row
-	 (get-square-in-row (rest row) (- col 1)))))
-	 
 ; HELPER FUNCTION FOR next-states: get-square
 ; returns the integer content of state s at square (r,c)
 ; if the square is outside of the state, returns the value of a wall
@@ -243,9 +208,13 @@
 	(c (second pos))) ; get the column of the position
     (cond ((null s) ; if the state is NIL
 	   wall) ; return wall since any square is outside of an empty state
+	  ((or (>= r (length s)) (< r 0)) ; if the row is invalid
+	   wall) ; return wall
+	  ((or (>= c (length (first s))) (< c 0)) ; if the col is invalid
+	   wall) ; return wall
 	  ((equal r 0) ; if row == 0
 	   ; then return the element in the first row that is in column c
-	   (get-square-in-row (first s) c))
+	   (elt (first s) c))	   	     
 	  (t ; otherwise (row != 0)
 	   ; check the other rows of the state and decrement r
 	   (get-square (rest s) (list (- r 1) c))))))
@@ -366,23 +335,10 @@
 
 ; EXERCISE: Modify this function to return the list of 
 ; sucessor states of s.
-;
-; This is the top-level next-states (successor) function.
-; Some skeleton code is provided below.
-; You may delete them totally, depending on your approach.
-; 
-; If you want to use it, you will need to set 'result' to be 
-; the set of states after moving the keeper in each of the 4 directions.
-; A pseudo-code for this is:
-; 
-; ...
-; (result (list (try-move s UP) (try-move s DOWN) (try-move s LEFT) (try-move s RIGHT)))
-; ...
-; 
-; You will need to define the function try-move and decide how to represent UP,DOWN,LEFT,RIGHT.
-; Any NIL result returned from try-move can be removed by cleanUpList.
-; 
-;
+
+; generates a list of the valid successor states of s
+; ARGUMENTS: s (state)
+; RETURN VALUE: list (of valid successor states)
 (defun next-states (s)
   ; try moving in all 4 directions
   (let ((result (list (try-move s 'up) (try-move s 'right) (try-move s 'down) (try-move s 'left))))
@@ -398,19 +354,6 @@
 (defun h0 (s)
   0) ; always returns the constant 0
 
-; HELPER FUNCTION for h1: num-boxes-in-row
-; returns the number of boxes (not on top of a goal) in a row 
-; ARGUMENTS: row (list)
-; RETURN VALUE: integer (# of boxes not on top of a goal in row)
-(defun num-boxes-in-row (row)
-  (cond ((null row) ; if the row is empty
-	 0) ; then it has 0 boxes
-	(t ; otherwise (the row is not empty)
-	 (cond ((equal (first row) box) ; if the first item in the row is a box
-		(+ 1 (num-boxes-in-row (rest row)))) ; return 1 + # boxes in rest of row
-	       (t ; the first item in the row isn't a box
-		(num-boxes-in-row (rest row))))))) ; return # boxes in the rest of the row
-
 ; EXERCISE: Modify this function to compute the 
 ; number of misplaced boxes in s.
 ;
@@ -424,11 +367,8 @@
 	 0) ; then it has 0 misplaced boxes
 	(t ; otherwise (the state is not empty)
 	 ; get the number of misplaced boxes in the first row
-	 (let ((num-boxes-in-first-row (num-boxes-in-row (first s))))
-	   ; then add that to the # of misplaced boxes in the other rows
-	   (+ num-boxes-in-first-row (h1 (rest s)))))))
-
-
+	 ; then add that to the # of misplaced boxes in the other rows
+	 (+ (count box (first s)) (h1 (rest s))))))
 
 ; HELPER FUNCTION FOR h804993030: manhattan-distance
 ; returns the Manhattan Distance between two coordinates
@@ -490,22 +430,20 @@
 	 ; add the distance for the first box to the distances for the rest of the boxes
 	 (+ (min-box-to-goal-dist (first box-coords) goal-coords) (sum-manhattan-dists (rest box-coords) goal-coords)))))
 
-; HELPER FUNCTION FOR h804993030: min-keeper-to-box-dist
-; returns the minimum manhattan distance between the keeper and any box
-; ARGUMENTS: keeper-pos (r,c), box-coords (list of (r,c))
-; RETURN VALUE: the minimum manhattan distance between the keeper and any box
-(defun min-keeper-to-box-dist (keeper-pos box-coords)
-  (cond ((null box-coords) ; if there's no misplaced boxes
+; HELPER FUNCTION FOR h804993030: min-keeper-to-item-dist
+; returns the minimum manhattan distance between the keeper and any item in a list
+; ARGUMENTS: keeper-pos (r,c), item-coords (list of (r,c))
+; RETURN VALUE: the minimum manhattan distance between the keeper and any item in a list
+(defun min-keeper-to-item-dist (keeper-pos item-coords)
+  (cond ((null item-coords) ; if there's no items
 	 0) ; return 0 as distance
-	((equal (length box-coords) 1) ; if there's only 1 box
-	 (manhattan-distance keeper-pos (first box-coords))) ; return the man-dist between the keeper and the box
+	((equal (length item-coords) 1) ; if there's only 1 item
+	 (manhattan-distance keeper-pos (first item-coords))) ; return the man-dist between the keeper and the item
 	(t ; otherwise (multiple coordinates)
-	 (let ((first-dist (manhattan-distance keeper-pos (first box-coords))))
+	 (let ((first-dist (manhattan-distance keeper-pos (first item-coords))))
 	   ; return min(first-dist, all the other distances)
-	   (min first-dist (min-keeper-to-box-dist keeper-pos (rest box-coords)))))))
+	   (min first-dist (min-keeper-to-item-dist keeper-pos (rest item-coords)))))))
   
-
-
 ; HELPER FUNCTION FOR h804993030: is-box-cornered
 ; returns true if a box is the state is stuck in a corner (which makes it unsolveable)
 ; ARGUMENTS: s (state), box-coords (list of (r,c))
@@ -539,22 +477,28 @@
 ; running time of a function call.
 ;
 
-; current idea: sum of the manhattan distances from each box to its closest goal
+; h804993030: factors in the manhattan distance from each box to its closest goal,
+; as well as the manhattan distance from the keeper to its nearest goal or box
 (defun h804993030 (s)
-  (let ((keeper-pos (getKeeperPosition s 0)) ; get the coords of the keeper
-	(box-coords (get-type-coords s box 0)) ; get the coords of all misplaced boxes
-	(goal-coords (get-type-coords s star 0))) ; get the coords of all goals
+  (let ((box-coords (get-type-coords s box 0))) ; get the coords of all misplaced boxes
     (cond ((is-box-cornered s box-coords) ; if a box is cornered - a solution is now IMPOSSIBLE
 	   1000) ; return a large value
 	  (t ; otherwise (no cornered boxes)
-	   (let ((box-goal-distances (sum-manhattan-dists box-coords goal-coords))
-		 (keeper-box-distance (min-keeper-to-box-dist keeper-pos box-coords)))
-             ; return the sum of the manhattan distances from each box to its closest goal
-	     ; PLUS the manhattan distance between the keeper and its closest box
-	     (+ box-goal-distances keeper-box-distance))))))
-	
-	
-
+	   ; box-goal-distances = the sum of the manhattan distances from each box to its closest goal
+	   (let* ((keeper-pos (getKeeperPosition s 0)) ; get the coords of the keeper
+		  (goal-coords (get-type-coords s star 0)) ; get the coords of all goals
+		  (box-goal-distances (sum-manhattan-dists box-coords goal-coords)))
+	     (cond ((> box-goal-distances 0) ; if there's still misplaced boxes
+		    ; add the manhattan distance between the keeper and its closest box
+		    ; to box-goal-distances
+		    (+ (min-keeper-to-item-dist keeper-pos box-coords) box-goal-distances))
+		   ; if there's no misplaced boxes and the keeper is on a goal
+		   ((isKeeperStar (get-square s keeper-pos))
+		    0) ; it's a goal state
+		   (t ; otherwise (all boxes are on goals, but the keeper isn't)
+		    ; return the manhattan distance between the keeper and its closest goal
+		    (min-keeper-to-item-dist keeper-pos goal-coords))))))))
+			
 ; ------------------------------ ENDING HEURISTICS -------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
