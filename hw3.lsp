@@ -505,6 +505,30 @@
 	   (min first-dist (min-keeper-to-box-dist keeper-pos (rest box-coords)))))))
   
 
+
+; HELPER FUNCTION FOR h804993030: is-box-cornered
+; returns true if a box is the state is stuck in a corner (which makes it unsolveable)
+; ARGUMENTS: s (state), box-coords (list of (r,c))
+; RETURN VALUE: true if a box is cornered, false otherwise
+(defun is-box-cornered (s box-coords)
+  (cond ((null box-coords) ; if there's no boxes
+	 NIL) ; return false - none of them are cornered
+	(t ; otherwise - there are boxes
+	 ; get the positions above, below, left, and right of the first box
+	 (let ((up (get-square s (get-new-pos (first box-coords) 'up)))
+	       (down (get-square s (get-new-pos (first box-coords) 'down)))
+	       (left (get-square s (get-new-pos (first box-coords) 'left)))
+	       (right (get-square s (get-new-pos (first box-coords) 'right))))
+	   ; if any two directions right next to each other are both walls,
+	   ; then the box is cornered (ex: up and right, right and down, down and left, left and up)
+	   (cond ((or (and (isWall up) (isWall right))
+		      (and (isWall right) (isWall down))
+		      (and (isWall down) (isWall left))
+		      (and (isWall left) (isWall up)))
+		  t) ; then the first box is cornered - return true
+		 (t ; otherwise - the first box isn't cornered
+		  (is-box-cornered s (rest box-coords)))))))) ; check the other boxes
+
 ; EXERCISE: Change the name of this function to h<UID> where
 ; <UID> is your actual student ID number. Then, modify this 
 ; function to compute an admissible heuristic value of s. 
@@ -520,12 +544,15 @@
   (let ((keeper-pos (getKeeperPosition s 0)) ; get the coords of the keeper
 	(box-coords (get-type-coords s box 0)) ; get the coords of all misplaced boxes
 	(goal-coords (get-type-coords s star 0))) ; get the coords of all goals
-    (let ((box-goal-distances (sum-manhattan-dists box-coords goal-coords))
-	  (keeper-box-distance (min-keeper-to-box-dist keeper-pos box-coords)))
-      ; return the sum of the manhattan distances from each box to its closest goal
-      ; PLUS the manhattan distance between the keeper and its closest box
-      (+ box-goal-distances keeper-box-distance))))
-
+    (cond ((is-box-cornered s box-coords) ; if a box is cornered - a solution is now IMPOSSIBLE
+	   1000) ; return a large value
+	  (t ; otherwise (no cornered boxes)
+	   (let ((box-goal-distances (sum-manhattan-dists box-coords goal-coords))
+		 (keeper-box-distance (min-keeper-to-box-dist keeper-pos box-coords)))
+             ; return the sum of the manhattan distances from each box to its closest goal
+	     ; PLUS the manhattan distance between the keeper and its closest box
+	     (+ box-goal-distances keeper-box-distance))))))
+	
 	
 
 ; ------------------------------ ENDING HEURISTICS -------------------------------
