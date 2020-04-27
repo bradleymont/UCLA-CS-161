@@ -64,30 +64,74 @@
 	       (cons updatedFirstRow (applyAssignment assignment (rest cnf)))
 	     ; if it is empty, just return the rest of the updated cnf
 	     (applyAssignment assignment (rest cnf)))))))
-  
+
+
+; takes in a cnf and an assignment to apply, and attempts to apply that assignment
+; returns next cnf if the assignment is valid
+; Note: if the assignment completely satifies the cnf, returns NIL 
+; Note: if the assignment is invalid, return 'invalid
+
+(defun getNextCnf (literal cnf)
+  (if (validAssignment literal cnf) ; if the literal does not violate any constraints
+      (applyAssignment literal cnf) ; apply the assignment and return the new cnf
+    'invalid)) ; otherwise return NIL
   
 ; takes in a partial assignment and a cnf of n integers, and returns the model
 ; returns NIL is not satisfiable
-(defun satSolver (assignment n cnf)
-  ; if the assignment is complete and consistent with every clause
-  (cond ((and (equal (length assignment) n) (isModel assignment cnf))
-	 assignment) ; we've found a model - return assignment
-	(t ; otherwise (our assignment is not complete
-	 ; assume that 1 .. (length assignment) variables have already been assigned
-	 ; so we'll assign variable (length assignment) + 1
-	 (let ((new-assignment (+ (length assignment) 1)))
-	   ; first, try the positive literal for new-assignment
-	   (if 
+;
+; Note: assume that the first element of assignment is the NEWEST and
+; has not yet been checked for satisfiability, so we must check it first
+;
+; Note: assume that 1 ... (length assignment) variables have already been assigned,
+; so we'll try to assign variable (length assignment) + 1 next
+					;
 
 
+
+
+
+
+
+(defun makeCompleteAssignment (vars n)
+  (if (equal (length vars) n)
+      vars
+    (makeCompleteAssignment (cons (+ (length vars) 1) vars) n)))
+
+
+
+; vars = our current partial assignment
+; new try: assume that any assignment we have is consistent
+(defun satSolver (vars n cnf)
+  (cond ((equal cnf 'invalid) ; if the cnf is invalid
+	 NIL) ; return false
+	((null cnf) ; if the cnf is empty
+	 ; we consider it always satisfied, so randomly assign any extra variables
+	 (makeCompleteAssignment vars n))
+	(t ; otherwise (the cnf is not empty)
+	 ; posLiteral and negLiteral are the next variables that we try to assign
+	 (let* ((posLiteral (+ (length vars) 1))
+		(negLiteral (- posLiteral))
+		(posNextCnf (getNextCnf posLiteral cnf))
+		(negNextCnf (getNextCnf negLiteral cnf)))
+	   (cond ((null posNextCnf) ; if the posLiteral finished the model
+		  ; we found our answer (will return at the beginning of next call)
+		  (satSolver (cons posLiteral vars) n posNextCnf))
+		 ; same logic, but for negLiteral
+		 ((null negNextCnf)
+		  (satSolver (cons negLiteral vars) n negNextCnf))
+		 (t ; otherwise (none of the assignments IMMEDIATELY solve the cnf)
+		  ; recursively try both, returning whichever one solves it
+		  ; or returning null if the cnf is unsatisfiable
+		  (or (satSolver (cons posLiteral vars) n posNextCnf)
+		      (satSolver (cons negLiteral vars) n negNextCnf))))))))
 	 
 ; EXERCISE: Modify this function to decide satisifiability of delta.
 ; If delta is satisfiable, sat? returns a list of n integers that represents a model of delta,  
 ; otherwise it returns NIL. (See spec for details.)
 ; param n: number of variables in delta
 ; param delta: a CNF represented as a list of lists
-;(defun sat? (n delta)
-;	...)
+(defun sat? (n delta)
+  (satSolver NIL n delta))
 
 
 
